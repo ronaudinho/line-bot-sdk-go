@@ -33,11 +33,12 @@ func TestPushMessages(t *testing.T) {
 		Error       error
 	}
 	testCases := []struct {
-		Label        string
-		Messages     []SendingMessage
-		Response     []byte
-		ResponseCode int
-		Want         want
+		Label                  string
+		Messages               []SendingMessage
+		CustomAggregationUnits []string
+		Response               []byte
+		ResponseCode           int
+		Want                   want
 	}{
 		{
 			Label:        "A text message",
@@ -46,6 +47,17 @@ func TestPushMessages(t *testing.T) {
 			Response:     []byte(`{}`),
 			Want: want{
 				RequestBody: []byte(`{"to":"U0cc15697597f61dd8b01cea8b027050e","messages":[{"type":"text","text":"Hello, world"}]}` + "\n"),
+				Response:    &BasicResponse{},
+			},
+		},
+		{
+			Label:                  "A text message with custom aggregation units",
+			Messages:               []SendingMessage{NewTextMessage("Hello, world")},
+			CustomAggregationUnits: []string{"promotion_a"},
+			ResponseCode:           200,
+			Response:               []byte(`{}`),
+			Want: want{
+				RequestBody: []byte(`{"to":"U0cc15697597f61dd8b01cea8b027050e","messages":[{"type":"text","text":"Hello, world"}],"customAggregationUnits":["promotion_a"]}` + "\n"),
 				Response:    &BasicResponse{},
 			},
 		},
@@ -515,7 +527,7 @@ func TestPushMessages(t *testing.T) {
 	for i, tc := range testCases {
 		currentTestIdx = i
 		t.Run(strconv.Itoa(i)+"/"+tc.Label, func(t *testing.T) {
-			res, err := client.PushMessage(toUserID, tc.Messages...).Do()
+			res, err := client.PushMessage(toUserID, tc.Messages...).WithCustomAggregationUnits(tc.CustomAggregationUnits).Do()
 			if tc.Want.Error != nil {
 				if !reflect.DeepEqual(err, tc.Want.Error) {
 					t.Errorf("Error %v; want %v", err, tc.Want.Error)
@@ -734,11 +746,12 @@ func TestMulticastMessages(t *testing.T) {
 		Error       error
 	}
 	testCases := []struct {
-		Label        string
-		Messages     []SendingMessage
-		Response     []byte
-		ResponseCode int
-		Want         want
+		Label                  string
+		Messages               []SendingMessage
+		CustomAggregationUnits []string
+		Response               []byte
+		ResponseCode           int
+		Want                   want
 	}{
 		{
 			Label:        "A text message",
@@ -747,6 +760,17 @@ func TestMulticastMessages(t *testing.T) {
 			Response:     []byte(`{}`),
 			Want: want{
 				RequestBody: []byte(`{"to":["U0cc15697597f61dd8b01cea8b027050e","U38ecbecfade326557b6971140741a4a6"],"messages":[{"type":"text","text":"Hello, world"}]}` + "\n"),
+				Response:    &BasicResponse{},
+			},
+		},
+		{
+			Label:                  "A text message with custom aggregation units",
+			Messages:               []SendingMessage{NewTextMessage("Hello, world")},
+			CustomAggregationUnits: []string{"promotion_a"},
+			ResponseCode:           200,
+			Response:               []byte(`{}`),
+			Want: want{
+				RequestBody: []byte(`{"to":["U0cc15697597f61dd8b01cea8b027050e","U38ecbecfade326557b6971140741a4a6"],"messages":[{"type":"text","text":"Hello, world"}],"customAggregationUnits":["promotion_a"]}` + "\n"),
 				Response:    &BasicResponse{},
 			},
 		},
@@ -844,7 +868,7 @@ func TestMulticastMessages(t *testing.T) {
 	for i, tc := range testCases {
 		currentTestIdx = i
 		t.Run(strconv.Itoa(i)+"/"+tc.Label, func(t *testing.T) {
-			res, err := client.Multicast(toUserIDs, tc.Messages...).Do()
+			res, err := client.Multicast(toUserIDs, tc.Messages...).WithCustomAggregationUnits(tc.CustomAggregationUnits).Do()
 			if tc.Want.Error != nil {
 				if !reflect.DeepEqual(err, tc.Want.Error) {
 					t.Errorf("Error %v; want %v", err, tc.Want.Error)

@@ -36,9 +36,10 @@ type PushMessageCall struct {
 	c   *Client
 	ctx context.Context
 
-	to                   string
-	messages             []SendingMessage
-	notificationDisabled bool
+	to                     string
+	messages               []SendingMessage
+	notificationDisabled   bool
+	customAggregationUnits []string
 }
 
 // WithContext method
@@ -53,6 +54,12 @@ func (call *PushMessageCall) WithNotificationDisabled() *PushMessageCall {
 	return call
 }
 
+// WithCustomAggregationUnits method will add custom aggregation units
+func (call *PushMessageCall) WithCustomAggregationUnits(units []string) *PushMessageCall {
+	call.customAggregationUnits = units
+	return call
+}
+
 // WithRetryKey method will set retry key string (UUID) on PushMessage.
 func (call *PushMessageCall) WithRetryKey(retryKey string) *PushMessageCall {
 	call.c.setRetryKey(retryKey)
@@ -62,13 +69,15 @@ func (call *PushMessageCall) WithRetryKey(retryKey string) *PushMessageCall {
 func (call *PushMessageCall) encodeJSON(w io.Writer) error {
 	enc := json.NewEncoder(w)
 	return enc.Encode(&struct {
-		To                   string           `json:"to"`
-		Messages             []SendingMessage `json:"messages"`
-		NotificationDisabled bool             `json:"notificationDisabled,omitempty"`
+		To                     string           `json:"to"`
+		Messages               []SendingMessage `json:"messages"`
+		NotificationDisabled   bool             `json:"notificationDisabled,omitempty"`
+		CustomAggregationUnits []string         `json:"customAggregationUnits,omitempty"`
 	}{
-		To:                   call.to,
-		Messages:             call.messages,
-		NotificationDisabled: call.notificationDisabled,
+		To:                     call.to,
+		Messages:               call.messages,
+		NotificationDisabled:   call.notificationDisabled,
+		CustomAggregationUnits: call.customAggregationUnits,
 	})
 }
 
@@ -160,9 +169,10 @@ type MulticastCall struct {
 	c   *Client
 	ctx context.Context
 
-	to                   []string
-	messages             []SendingMessage
-	notificationDisabled bool
+	to                     []string
+	messages               []SendingMessage
+	notificationDisabled   bool
+	customAggregationUnits []string
 }
 
 // WithContext method
@@ -177,6 +187,12 @@ func (call *MulticastCall) WithNotificationDisabled() *MulticastCall {
 	return call
 }
 
+// WithCustomAggregationUnits method will add custom aggregation units
+func (call *MulticastCall) WithCustomAggregationUnits(units []string) *MulticastCall {
+	call.customAggregationUnits = units
+	return call
+}
+
 // WithRetryKey method will set retry key string (UUID) on Multicast.
 func (call *MulticastCall) WithRetryKey(retryKey string) *MulticastCall {
 	call.c.setRetryKey(retryKey)
@@ -186,13 +202,15 @@ func (call *MulticastCall) WithRetryKey(retryKey string) *MulticastCall {
 func (call *MulticastCall) encodeJSON(w io.Writer) error {
 	enc := json.NewEncoder(w)
 	return enc.Encode(&struct {
-		To                   []string         `json:"to"`
-		Messages             []SendingMessage `json:"messages"`
-		NotificationDisabled bool             `json:"notificationDisabled,omitempty"`
+		To                     []string         `json:"to"`
+		Messages               []SendingMessage `json:"messages"`
+		NotificationDisabled   bool             `json:"notificationDisabled,omitempty"`
+		CustomAggregationUnits []string         `json:"customAggregationUnits,omitempty"`
 	}{
-		To:                   call.to,
-		Messages:             call.messages,
-		NotificationDisabled: call.notificationDisabled,
+		To:                     call.to,
+		Messages:               call.messages,
+		NotificationDisabled:   call.notificationDisabled,
+		CustomAggregationUnits: call.customAggregationUnits,
 	})
 }
 
