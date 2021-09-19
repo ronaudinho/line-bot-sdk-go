@@ -25,10 +25,11 @@ type InsightType string
 
 // InsightType constants
 const (
-	InsightTypeMessageDelivery      InsightType = "message/delivery"
-	InsightTypeUserInteractionStats InsightType = "message/event"
-	InsightTypeFollowers            InsightType = "followers"
-	InsightTypeDemographic          InsightType = "demographic"
+	InsightTypeMessageDelivery                 InsightType = "message/delivery"
+	InsightTypeUserInteractionStats            InsightType = "message/event"
+	InsightTypeUserInteractionAggregationStats InsightType = "message/event/aggregation"
+	InsightTypeFollowers                       InsightType = "followers"
+	InsightTypeDemographic                     InsightType = "demographic"
 )
 
 // GetNumberMessagesDeliveryCall type
@@ -175,6 +176,49 @@ func (call *GetUserInteractionStatsCall) Do() (*MessagesUserInteractionStatsResp
 	if call.requestID != "" {
 		q.Add("requestId", call.requestID)
 	}
+	res, err := call.c.get(call.ctx, call.c.endpointBase, endpoint, q)
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(res)
+	return decodeToMessagesUserInteractionStatsResponse(res)
+}
+
+// GetUserInteractionAggregationStatsCall type
+type GetUserInteractionAggregationStatsCall struct {
+	c   *Client
+	ctx context.Context
+
+	customAggregationUnit string
+	from                  string
+	to                    string
+	insightType           InsightType
+}
+
+// GetUserInteractionAggregationStats method
+func (client *Client) GetUserInteractionAggregationStats(customAggregationUnit, from, to string) *GetUserInteractionAggregationStatsCall {
+	return &GetUserInteractionAggregationStatsCall{
+		c:                     client,
+		customAggregationUnit: customAggregationUnit,
+		from:                  from,
+		to:                    to,
+		insightType:           InsightTypeUserInteractionAggregationStats,
+	}
+}
+
+// WithContext method
+func (call *GetUserInteractionAggregationStatsCall) WithContext(ctx context.Context) *GetUserInteractionAggregationStatsCall {
+	call.ctx = ctx
+	return call
+}
+
+// Do method, returns MessagesUserInteractionAggregationStatsResponse
+func (call *GetUserInteractionAggregationStatsCall) Do() (*MessagesUserInteractionStatsResponse, error) {
+	endpoint := fmt.Sprintf(APIEndpointInsight, call.insightType)
+	q := url.Values{}
+	q.Add("customAggregationUnit", call.customAggregationUnit)
+	q.Add("from", call.from)
+	q.Add("to", call.to)
 	res, err := call.c.get(call.ctx, call.c.endpointBase, endpoint, q)
 	if err != nil {
 		return nil, err

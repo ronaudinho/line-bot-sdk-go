@@ -771,3 +771,204 @@ func TestGetUserInteractionStatsContext(t *testing.T) {
 	_, err = client.GetUserInteractionStats("f70dd685-499a-4231-a441-f24b8d4fba21").WithContext(ctx).Do()
 	expectCtxDeadlineExceed(ctx, err, t)
 }
+
+func TestGetUserInteractionAggregationStats(t *testing.T) {
+	type want struct {
+		URLPath     string
+		RequestBody []byte
+		Response    *MessagesUserInteractionStatsResponse
+		Error       error
+	}
+	testCases := []struct {
+		Label                 string
+		CustomAggregationUnit string
+		From                  string
+		To                    string
+		ResponseCode          int
+		Response              []byte
+		Want                  want
+	}{
+		{
+			Label:                 "Success",
+			CustomAggregationUnit: "promotion_a",
+			From:                  "20210301",
+			To:                    "20210331",
+			ResponseCode:          200,
+			Response: []byte(`{
+				"overview": {
+					"uniqueImpression": 40,
+					"uniqueClick": 30,
+					"uniqueMediaPlayed": 25,
+					"uniqueMediaPlayed100Percent": null
+				},
+				"messages": [
+					{
+						"seq": 1,
+						"impression": 42,
+						"mediaPlayed": 30,
+						"mediaPlayed25Percent": null,
+						"mediaPlayed50Percent": null,
+						"mediaPlayed75Percent": null,
+						"mediaPlayed100Percent": null,
+						"uniqueMediaPlayed": 25,
+						"uniqueMediaPlayed25Percent": null,
+						"uniqueMediaPlayed50Percent": null,
+						"uniqueMediaPlayed75Percent": null,
+						"uniqueMediaPlayed100Percent": null
+					}
+				],
+				"clicks": [
+					{
+						"seq": 1,
+						"url": "https://developers.line.biz/",
+						"click": 35,
+						"uniqueClick": 25,
+						"uniqueClickOfRequest": null
+					},
+					{
+						"seq": 1,
+						"url": "https://www.line-community.me/",
+						"click": 29,
+						"uniqueClick": null,
+						"uniqueClickOfRequest": null
+					}
+				]
+			}`),
+			Want: want{
+				URLPath:     fmt.Sprintf(APIEndpointInsight, InsightTypeUserInteractionAggregationStats),
+				RequestBody: []byte(""),
+				Response: &MessagesUserInteractionStatsResponse{
+					Overview: OverviewDetail{
+						UniqueImpression:            40,
+						UniqueClick:                 30,
+						UniqueMediaPlayed:           25,
+						UniqueMediaPlayed100Percent: 0,
+					},
+					Messages: []MessageDetail{
+						{
+							Seq:                         1,
+							Impression:                  42,
+							MediaPlayed:                 30,
+							MediaPlayed25Percent:        0,
+							MediaPlayed50Percent:        0,
+							MediaPlayed75Percent:        0,
+							MediaPlayed100Percent:       0,
+							UniqueMediaPlayed:           25,
+							UniqueMediaPlayed25Percent:  0,
+							UniqueMediaPlayed50Percent:  0,
+							UniqueMediaPlayed75Percent:  0,
+							UniqueMediaPlayed100Percent: 0,
+						},
+					},
+					Clicks: []ClickDetail{
+						{
+							Seq:                  1,
+							URL:                  "https://developers.line.biz/",
+							Click:                35,
+							UniqueClick:          25,
+							UniqueClickOfRequest: 0,
+						},
+						{
+							Seq:                  1,
+							URL:                  "https://www.line-community.me/",
+							Click:                29,
+							UniqueClick:          0,
+							UniqueClickOfRequest: 0,
+						},
+					},
+				},
+			},
+		},
+		{
+			Label:        "Internal server error",
+			ResponseCode: 500,
+			Response:     []byte("500 Internal server error"),
+			Want: want{
+				URLPath:     fmt.Sprintf(APIEndpointInsight, InsightTypeUserInteractionAggregationStats),
+				RequestBody: []byte(""),
+				Error: &APIError{
+					Code: 500,
+				},
+			},
+		},
+	}
+
+	var currentTestIdx int
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		tc := testCases[currentTestIdx]
+		if r.Method != http.MethodGet {
+			t.Errorf("Method %s; want %s", r.Method, http.MethodGet)
+		}
+		if r.URL.Path != tc.Want.URLPath {
+			t.Errorf("URLPath %s; want %s", r.URL.Path, tc.Want.URLPath)
+		}
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(body, tc.Want.RequestBody) {
+			t.Errorf("RequestBody %s; want %s", body, tc.Want.RequestBody)
+		}
+		w.WriteHeader(tc.ResponseCode)
+		w.Write(tc.Response)
+	}))
+	defer server.Close()
+
+	dataServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		t.Error("Unexpected Data API call")
+		w.WriteHeader(404)
+		w.Write([]byte(`{"message":"Not found"}`))
+	}))
+	defer dataServer.Close()
+
+	client, err := mockClient(server, dataServer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, tc := range testCases {
+		currentTestIdx = i
+		t.Run(strconv.Itoa(i)+"/"+tc.Label, func(t *testing.T) {
+			res, err := client.GetUserInteractionAggregationStats(tc.CustomAggregationUnit, tc.From, tc.To).Do()
+			if tc.Want.Error != nil {
+				if !reflect.DeepEqual(err, tc.Want.Error) {
+					t.Errorf("Error %v; want %v", err, tc.Want.Error)
+				}
+			} else {
+				if err != nil {
+					t.Error(err)
+				}
+			}
+			if !reflect.DeepEqual(res, tc.Want.Response) {
+				t.Errorf("Response %v; want %v", res, tc.Want.Response)
+			}
+		})
+	}
+}
+
+func TestGetUserInteractionAggregationStatsContext(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		time.Sleep(10 * time.Millisecond)
+		w.Write([]byte("{}"))
+	}))
+	defer server.Close()
+
+	dataServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		t.Error("Unexpected Data API call")
+		w.WriteHeader(404)
+		w.Write([]byte(`{"message":"Not found"}`))
+	}))
+	defer dataServer.Close()
+
+	client, err := mockClient(server, dataServer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Millisecond)
+	defer cancel()
+	_, err = client.GetUserInteractionAggregationStats("promotion_a", "20210301", "20210331").WithContext(ctx).Do()
+	expectCtxDeadlineExceed(ctx, err, t)
+}
